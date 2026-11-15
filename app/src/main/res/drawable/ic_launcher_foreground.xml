@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/img_app_icon_fg_1794716789206"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Left Shield Facet (Bright Emerald) -->
+    <path
+        android:fillColor="#2EE59D"
+        android:pathData="M54,23L29,34V52.5C29,68.8 39.6,83.8 54,87.8V23Z" />
+    <!-- Outer Right Shield Facet (Deep Teal Emerald) -->
+    <path
+        android:fillColor="#0FA968"
+        android:pathData="M54,23L79,34V52.5C79,68.8 68.4,83.8 54,87.8V23Z" />
+    <!-- Inner Dark Navy Shield Cutout -->
+    <path
+        android:fillColor="#0B132B"
+        android:pathData="M54,30.5L35.5,38.7V52.5C35.5,64.8 43.3,76.1 54,79.5C64.7,76.1 72.5,64.8 72.5,52.5V38.7L54,30.5Z" />
+    <!-- Crisp Geometric Checkmark Crest -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M49.8,62.8L41.2,54.2L45.1,50.3L49.8,55L62.9,41.9L66.8,45.8L49.8,62.8Z" />
+</vector>

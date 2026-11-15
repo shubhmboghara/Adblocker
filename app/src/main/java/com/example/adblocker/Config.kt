@@ -47,8 +47,11 @@ object Config {
     const val WORK_REPEAT_DAYS = 7L
     const val BLOCKLIST_WORK_NAME = "adblocker_periodic_blocklist_refresh"
 
-    // Privacy policy & Diagnostics test domains
+    // Privacy policy, Social links & Diagnostics test domains
     const val PRIVACY_POLICY_URL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/readme.md"
+    const val SOCIAL_GITHUB_URL = "https://github.com/shubhmboghara/"
+    const val SOCIAL_INSTAGRAM_URL = "https://www.instagram.com/shubhambogharadotcom?igsh=NDFpNnY2MXJ5czVi&igsi=NDFpNnY2MXJ5czVi"
+    const val SOCIAL_LINKEDIN_URL = "https://in.linkedin.com/in/shubham-boghara-60b4a1343"
     const val TEST_ALLOWED_DOMAIN = "example.com"
     const val TEST_BLOCKED_DOMAIN = "doubleclick.net"
 

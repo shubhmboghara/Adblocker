@@ -3,7 +3,10 @@ package com.example.adblocker
 import android.app.Application
 import android.content.Intent
 import android.net.VpnService
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +24,8 @@ import java.net.InetAddress
 
 data class InstalledAppInfo(
     val label: String,
-    val packageName: String
+    val packageName: String,
+    val icon: ImageBitmap? = null
 )
 
 class AdBlockViewModel(application: Application) : AndroidViewModel(application) {
@@ -122,7 +126,10 @@ class AdBlockViewModel(application: Application) : AndroidViewModel(application)
                 val pkg = info.activityInfo?.packageName ?: return@mapNotNull null
                 if (pkg == appContext.packageName) return@mapNotNull null
                 val label = info.loadLabel(pm)?.toString()?.trim().orEmpty().ifEmpty { pkg }
-                InstalledAppInfo(label = label, packageName = pkg)
+                val iconBitmap = runCatching {
+                    info.loadIcon(pm)?.toBitmap(width = 96, height = 96)?.asImageBitmap()
+                }.getOrNull()
+                InstalledAppInfo(label = label, packageName = pkg, icon = iconBitmap)
             }
             .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }

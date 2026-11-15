@@ -1,8 +1,11 @@
 package com.example.adblocker
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,31 +19,24 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.CloudDownload
-import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -53,49 +49,36 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.BuildConfig
 import com.example.R
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settings: AdBlockerSettings,
-    sourceStatuses: Map<String, SourceStatus>,
-    isDownloadingBlocklist: Boolean,
+    @Suppress("UNUSED_PARAMETER") sourceStatuses: Map<String, SourceStatus>,
+    @Suppress("UNUSED_PARAMETER") isDownloadingBlocklist: Boolean,
     installedApps: List<InstalledAppInfo>,
-    onToggleBlocklistSource: (String, Boolean) -> Unit,
-    onRefreshNow: () -> Unit,
-    onSelectUpstreamDns: (UpstreamDnsOption, String) -> Unit,
-    onSaveCustomBlocklist: (String) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onToggleBlocklistSource: (String, Boolean) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onRefreshNow: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onSelectUpstreamDns: (UpstreamDnsOption, String) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onSaveCustomBlocklist: (String) -> Unit,
     onToggleAppBypass: (String, Boolean) -> Unit,
-    onResetDisclosure: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onResetDisclosure: () -> Unit,
     onClearAllData: () -> Unit,
     onOpenAbout: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    var customIpInput by rememberSaveable(settings.customDnsIp) {
-        mutableStateOf(settings.customDnsIp)
-    }
-    var customIpError by rememberSaveable { mutableStateOf(false) }
-
-    var customUrlInput by rememberSaveable(settings.customBlocklistUrl) {
-        mutableStateOf(settings.customBlocklistUrl)
-    }
-    var customUrlError by rememberSaveable { mutableStateOf(false) }
-
     var appSearchQuery by rememberSaveable { mutableStateOf("") }
-
-    val dateFormatter = remember {
-        SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-    }
 
     val filteredApps = remember(installedApps, appSearchQuery) {
         val q = appSearchQuery.trim().lowercase()
@@ -103,7 +86,7 @@ fun SettingsScreen(
             installedApps
         } else {
             installedApps.filter {
-                it.label.lowercase().contains(q) || it.packageName.lowercase().contains(q)
+                it.label.lowercase().contains(q)
             }
         }
     }
@@ -147,10 +130,10 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 1. Blocklists Section (5 Sources + Switches + Entry Counts + Last Updated + Refresh Now)
-            item(key = "blocklists_sources_section") {
+            // 1. App Brand Card (Crisp Vector Logo + App Name + Version Badge)
+            item(key = "app_brand_header_card") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
@@ -162,307 +145,258 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
                 ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.Shield,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = stringResource(R.string.blocklists_section_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_adshield_logo),
+                            contentDescription = stringResource(R.string.app_name),
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(MaterialTheme.shapes.small)
+                        )
 
-                        BlocklistSources.ALL.forEachIndexed { index, source ->
-                            val isEnabled = settings.enabledSourceIds.contains(source.id)
-                            val status = sourceStatuses[source.id]
-                            val switchCd = stringResource(R.string.toggle_source_cd, source.displayName)
-                            val subtitle = if (status != null && status.lastUpdatedMillis > 0L) {
-                                val formattedTime = dateFormatter.format(Date(status.lastUpdatedMillis))
-                                stringResource(
-                                    R.string.source_status_updated,
-                                    status.entryCount,
-                                    formattedTime
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = stringResource(R.string.app_name),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                            } else {
-                                stringResource(R.string.source_status_not_downloaded)
-                            }
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .sizeIn(minHeight = 56.dp)
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(end = 12.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
                                 ) {
                                     Text(
-                                        text = source.displayName,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = subtitle,
+                                        text = "v${BuildConfig.VERSION_NAME}",
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.testTag("source_status_${source.id}")
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                     )
                                 }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.settings_brand_subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
 
-                                Switch(
-                                    checked = isEnabled,
-                                    onCheckedChange = { checked ->
-                                        onToggleBlocklistSource(source.id, checked)
-                                    },
-                                    modifier = Modifier
-                                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                        .semantics { contentDescription = switchCd }
-                                        .testTag("source_switch_${source.id}")
+            // 2. App Exclusions Section Header & Search
+            item(key = "per_app_bypass_header") {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Apps,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.per_app_bypass_section_title,
+                                        settings.bypassedPackages.size
+                                    ),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = stringResource(R.string.per_app_bypass_section_subtitle),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-
-                            if (index < BlocklistSources.ALL.lastIndex) {
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            }
-                        }
-
-                        if (isDownloadingBlocklist) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            LinearProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(3.dp)
-                            )
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
-                        Button(
-                            onClick = onRefreshNow,
-                            enabled = !isDownloadingBlocklist,
-                            shape = MaterialTheme.shapes.small,
+
+                        OutlinedTextField(
+                            value = appSearchQuery,
+                            onValueChange = { appSearchQuery = it },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Search,
+                                    contentDescription = null
+                                )
+                            },
+                            trailingIcon = {
+                                if (appSearchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { appSearchQuery = "" }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Close,
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                            },
+                            placeholder = { Text(text = stringResource(R.string.search_apps_placeholder)) },
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.medium,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                .testTag("refresh_now_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = stringResource(R.string.refresh_now_button))
-                        }
+                                .testTag("search_apps_input")
+                        )
                     }
                 }
             }
 
-            // 2. Upstream DNS Section
-            item(key = "upstream_dns_section") {
+            // 3. Installed Apps List with Real App Logo + App Name + Status + Switch
+            items(
+                items = filteredApps,
+                key = { "app_${it.packageName}" }
+            ) { appInfo ->
+                val isBypassed = settings.bypassedPackages.contains(appInfo.packageName)
+                val bypassCd = stringResource(R.string.bypass_app_cd, appInfo.label)
+
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onToggleAppBypass(appInfo.packageName, !isBypassed)
+                        }
+                        .semantics { contentDescription = bypassCd }
+                        .testTag("bypass_row_${appInfo.packageName}"),
+                    shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
                     border = BorderStroke(
                         width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
+                        color = if (isBypassed) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        }
                     )
                 ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.Dns,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = stringResource(R.string.upstream_dns_section_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        val dnsOptions = listOf(
-                            UpstreamDnsOption.GOOGLE to stringResource(R.string.dns_google_label),
-                            UpstreamDnsOption.CLOUDFLARE to stringResource(R.string.dns_cloudflare_label),
-                            UpstreamDnsOption.QUAD9 to stringResource(R.string.dns_quad9_label),
-                            UpstreamDnsOption.CUSTOM to stringResource(R.string.dns_custom_label)
-                        )
-
-                        dnsOptions.forEach { (option, label) ->
-                            val selected = settings.upstreamOption == option
-                            Row(
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sizeIn(minHeight = 68.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // App Logo / Icon rendered cleanly
+                        val iconBitmap = appInfo.icon
+                        if (iconBitmap != null) {
+                            Image(
+                                bitmap = iconBitmap,
+                                contentDescription = appInfo.label,
+                                contentScale = ContentScale.Fit,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .sizeIn(minHeight = 48.dp)
-                                    .selectable(
-                                        selected = selected,
-                                        role = Role.RadioButton,
-                                        onClick = {
-                                            if (option != UpstreamDnsOption.CUSTOM) {
-                                                customIpError = false
-                                                onSelectUpstreamDns(option, customIpInput)
-                                            } else {
-                                                if (VpnStateStore.isValidIpv4(customIpInput)) {
-                                                    customIpError = false
-                                                    onSelectUpstreamDns(UpstreamDnsOption.CUSTOM, customIpInput)
-                                                } else {
-                                                    onSelectUpstreamDns(UpstreamDnsOption.CUSTOM, Config.DEFAULT_UPSTREAM_DNS)
-                                                }
-                                            }
-                                        }
-                                    )
-                                    .testTag("dns_radio_${option.name}"),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .size(44.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                            )
+                        } else {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                RadioButton(
-                                    selected = selected,
-                                    onClick = null
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = appInfo.label.take(1).uppercase(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        // App Name & Status Indicator
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp)
+                        ) {
+                            Text(
+                                text = appInfo.label,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isBypassed) {
+                                                MaterialTheme.colorScheme.outline
+                                            } else {
+                                                MaterialTheme.colorScheme.primary
+                                            }
+                                        )
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(start = 12.dp)
+                                    text = if (isBypassed) {
+                                        stringResource(R.string.app_status_bypassed)
+                                    } else {
+                                        stringResource(R.string.app_status_protected)
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (isBypassed) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    }
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = customIpInput,
-                            onValueChange = {
-                                customIpInput = it
-                                customIpError = false
-                            },
-                            label = { Text(text = stringResource(R.string.dns_custom_label)) },
-                            placeholder = { Text(text = stringResource(R.string.custom_dns_placeholder)) },
-                            isError = customIpError,
-                            singleLine = true,
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("custom_dns_input")
+                        Switch(
+                            checked = isBypassed,
+                            onCheckedChange = { checked ->
+                                onToggleAppBypass(appInfo.packageName, checked)
+                            }
                         )
-                        if (customIpError) {
-                            Text(
-                                text = stringResource(R.string.custom_dns_error),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                if (VpnStateStore.isValidIpv4(customIpInput)) {
-                                    customIpError = false
-                                    onSelectUpstreamDns(UpstreamDnsOption.CUSTOM, customIpInput)
-                                } else {
-                                    customIpError = true
-                                }
-                            },
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                .testTag("apply_custom_dns_button")
-                        ) {
-                            Text(text = stringResource(R.string.apply_custom_dns_button))
-                        }
                     }
                 }
             }
 
-            // 3. Custom Blocklist URL Section
-            item(key = "custom_blocklist_section") {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.CloudDownload,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = stringResource(R.string.custom_blocklist_section_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = customUrlInput,
-                            onValueChange = {
-                                customUrlInput = it
-                                customUrlError = false
-                            },
-                            placeholder = { Text(text = stringResource(R.string.custom_blocklist_placeholder)) },
-                            isError = customUrlError,
-                            singleLine = true,
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("custom_blocklist_input")
-                        )
-                        if (customUrlError) {
-                            Text(
-                                text = stringResource(R.string.custom_blocklist_error),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                if (VpnStateStore.isValidHttpsUrl(customUrlInput)) {
-                                    customUrlError = false
-                                    onSaveCustomBlocklist(customUrlInput)
-                                } else {
-                                    customUrlError = true
-                                }
-                            },
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                .testTag("save_custom_blocklist_button")
-                        ) {
-                            Text(text = stringResource(R.string.save_refresh_blocklist_button))
-                        }
-                    }
-                }
-            }
-
-            // 4. Actions: About, Reset Disclosure, Clear All Data
+            // 4. General Actions: About & Reset App Data
             item(key = "settings_actions_section") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -486,7 +420,7 @@ fun SettingsScreen(
                             shape = MaterialTheme.shapes.small,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .sizeIn(minWidth = 48.dp, minHeight = 50.dp)
                                 .testTag("open_about_button")
                         ) {
                             Icon(
@@ -499,24 +433,12 @@ fun SettingsScreen(
                         }
 
                         OutlinedButton(
-                            onClick = onResetDisclosure,
-                            shape = MaterialTheme.shapes.small,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                .testTag("reset_disclosure_button")
-                        ) {
-                            Text(text = stringResource(R.string.reset_disclosure_button))
-                        }
-
-                        OutlinedButton(
                             onClick = onClearAllData,
                             shape = MaterialTheme.shapes.small,
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .sizeIn(minWidth = 48.dp, minHeight = 50.dp)
                                 .testTag("clear_all_data_button")
                         ) {
                             Text(
@@ -524,100 +446,6 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
-                    }
-                }
-            }
-
-            // 5. Per-App Bypass Header & Search
-            item(key = "per_app_bypass_header") {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.Apps,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(
-                                R.string.per_app_bypass_section_title,
-                                settings.bypassedPackages.size
-                            ),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = appSearchQuery,
-                        onValueChange = { appSearchQuery = it },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.Search,
-                                contentDescription = null
-                            )
-                        },
-                        placeholder = { Text(text = stringResource(R.string.search_apps_placeholder)) },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("search_apps_input")
-                    )
-                }
-            }
-
-            items(
-                items = filteredApps,
-                key = { "app_${it.packageName}" }
-            ) { appInfo ->
-                val isChecked = settings.bypassedPackages.contains(appInfo.packageName)
-                val bypassCd = stringResource(R.string.bypass_app_cd, appInfo.label)
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            onToggleAppBypass(appInfo.packageName, !isChecked)
-                        }
-                        .semantics { contentDescription = bypassCd }
-                        .testTag("bypass_row_${appInfo.packageName}"),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .sizeIn(minHeight = 56.dp)
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = appInfo.label,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = appInfo.packageName,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Checkbox(
-                            checked = isChecked,
-                            onCheckedChange = { checked ->
-                                onToggleAppBypass(appInfo.packageName, checked)
-                            }
-                        )
                     }
                 }
             }

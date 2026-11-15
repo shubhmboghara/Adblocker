@@ -59,5 +59,5 @@ object BlocklistSources {
 
     val DEFAULT_ENABLED_IDS: Set<String> = ALL
         .filter { it.defaultEnabled }
-        .mapTo( LinkedHashSet() ) { it.id }
+        .mapTo(LinkedHashSet()) { it.id }
 }

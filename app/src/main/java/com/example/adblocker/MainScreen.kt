@@ -15,6 +15,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,28 +36,27 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -67,8 +67,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -85,8 +87,8 @@ import com.example.R
 fun MainScreen(
     isProtectionOn: Boolean,
     blockedCount: Int,
-    blocklistCount: Int,
-    isDownloadingBlocklist: Boolean,
+    @Suppress("UNUSED_PARAMETER") blocklistCount: Int,
+    @Suppress("UNUSED_PARAMETER") isDownloadingBlocklist: Boolean,
     crashReportText: String?,
     onToggleProtection: () -> Unit,
     onOpenLog: () -> Unit,
@@ -151,8 +153,8 @@ fun MainScreen(
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_transition")
     val pulseRadiusMultiplier by infiniteTransition.animateFloat(
-        initialValue = 1.02f,
-        targetValue = if (isProtectionOn) 1.20f else 1.05f,
+        initialValue = 1.04f,
+        targetValue = if (isProtectionOn) 1.22f else 1.08f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -161,7 +163,7 @@ fun MainScreen(
     )
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.28f,
-        targetValue = if (isProtectionOn) 0.06f else 0.12f,
+        targetValue = if (isProtectionOn) 0.06f else 0.10f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -179,31 +181,17 @@ fun MainScreen(
                 )
             },
             text = {
-                Column {
-                    Text(
-                        text = stringResource(R.string.crash_dialog_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = crashReportText.take(600),
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = stringResource(R.string.crash_dialog_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("AdBlocker Crash Report", crashReportText))
+                        clipboard.setPrimaryClip(ClipData.newPlainText("AdShield Report", crashReportText))
                         Toast.makeText(context, copiedToastText, Toast.LENGTH_SHORT).show()
                         onDismissCrashReport()
                     },
@@ -233,35 +221,20 @@ fun MainScreen(
             .testTag("main_screen"),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (isProtectionOn) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            },
-                            modifier = Modifier.size(34.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Filled.Shield,
-                                    contentDescription = null,
-                                    tint = if (isProtectionOn) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_adshield_logo),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(MaterialTheme.shapes.extraSmall)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = stringResource(R.string.app_name),
                             style = MaterialTheme.typography.titleLarge,
@@ -271,21 +244,27 @@ fun MainScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = onOpenSettings,
-                        modifier = Modifier
-                            .padding(end = 6.dp)
-                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                            .testTag("open_settings_button")
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.padding(end = 12.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = openSettingsCd,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        IconButton(
+                            onClick = onOpenSettings,
+                            modifier = Modifier
+                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .testTag("open_settings_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Settings,
+                                contentDescription = openSettingsCd,
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
@@ -295,7 +274,7 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp, vertical = 12.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
@@ -310,15 +289,15 @@ fun MainScreen(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(244.dp)
+                        .size(248.dp)
                         .drawBehind {
-                            val baseRadius = size.minDimension / 2f * 0.80f
+                            val baseRadius = size.minDimension / 2f * 0.78f
                             drawCircle(
                                 color = ringBorderColor.copy(alpha = pulseAlpha),
                                 radius = baseRadius * pulseRadiusMultiplier
                             )
                             drawCircle(
-                                color = ringBorderColor.copy(alpha = pulseAlpha * 1.4f),
+                                color = ringBorderColor.copy(alpha = pulseAlpha * 1.5f),
                                 radius = baseRadius * ((1f + pulseRadiusMultiplier) / 2f),
                                 style = Stroke(width = 2.dp.toPx())
                             )
@@ -336,7 +315,7 @@ fun MainScreen(
                                 )
                             )
                             .border(
-                                width = 4.dp,
+                                width = 3.5.dp,
                                 color = ringBorderColor,
                                 shape = CircleShape
                             )
@@ -371,7 +350,7 @@ fun MainScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Status Pill Badge announced by TalkBack when protection toggles
                 Surface(
@@ -391,7 +370,7 @@ fun MainScreen(
                     )
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
@@ -407,9 +386,9 @@ fun MainScreen(
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (isProtectionOn) {
                                 stringResource(R.string.protection_on)
@@ -429,18 +408,30 @@ fun MainScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = if (isProtectionOn) {
+                        stringResource(R.string.protection_on_subtitle)
+                    } else {
+                        stringResource(R.string.protection_off_subtitle)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Combined Blocklist & Blocked Requests Telemetry + Controls
+            // Bottom Dashboard Cards + Activity Log Button
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 460.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Blocked Ads Counter Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
@@ -452,31 +443,28 @@ fun MainScreen(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
                 ) {
-                    Column(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(horizontal = 18.dp, vertical = 16.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(44.dp)
                         ) {
-                            Surface(
-                                shape = MaterialTheme.shapes.small,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Block,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Block,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
                             }
-                            Spacer(modifier = Modifier.width(14.dp))
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(R.string.blocked_requests_count, blockedCount),
                                 style = MaterialTheme.typography.titleMedium,
@@ -484,86 +472,64 @@ fun MainScreen(
                                 modifier = Modifier.testTag("blocked_requests_text")
                             )
                         }
+                    }
+                }
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                // On-Device Privacy Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 14.dp)
+                    ) {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(44.dp)
                         ) {
-                            Surface(
-                                shape = MaterialTheme.shapes.small,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Dns,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.blocklist_domains_count, blocklistCount),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.testTag("blocklist_count_text")
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Lock,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                if (isDownloadingBlocklist) {
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = stringResource(R.string.blocklist_updating_hint),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    LinearProgressIndicator(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(3.dp)
-                                    )
-                                }
                             }
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.privacy_badge_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(R.string.privacy_badge_subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
 
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(R.string.private_dns_note),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("private_dns_note_text")
-                        )
-                    }
-                }
-
+                // Activity Log Action Button
                 FilledTonalButton(
                     onClick = onOpenLog,
-                    shape = MaterialTheme.shapes.small,
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .sizeIn(minWidth = 120.dp, minHeight = 52.dp)
+                        .sizeIn(minWidth = 120.dp, minHeight = 54.dp)
                         .semantics { contentDescription = openLogCd }
                         .testTag("open_log_button")
                 ) {
@@ -572,15 +538,19 @@ fun MainScreen(
                         contentDescription = null,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = stringResource(R.string.open_log_button),
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

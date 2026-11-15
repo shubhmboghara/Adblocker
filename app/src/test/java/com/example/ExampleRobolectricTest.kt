@@ -25,7 +25,7 @@ class ExampleRobolectricTest {
     fun appName_isAdBlocker() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val appName = context.getString(R.string.app_name)
-        assertEquals("AdBlocker", appName)
+        assertEquals("AdShield", appName)
     }
 
     @Test

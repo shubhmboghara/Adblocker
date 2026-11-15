@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "AdBlocker"
+rootProject.name = "AdShield"
 
 include(":app")

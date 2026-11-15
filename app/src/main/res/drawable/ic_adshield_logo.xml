@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Container -->
+    <path
+        android:fillColor="#0B132B"
+        android:pathData="M22,0H74C86.15,0 96,9.85 96,22V74C96,86.15 86.15,96 74,96H22C9.85,96 0,86.15 0,74V22C0,9.85 9.85,0 22,0Z" />
+    <!-- Left Shield Wing (Bright Emerald) -->
+    <path
+        android:fillColor="#2EE59D"
+        android:pathData="M48,16L21,28V48C21,65.5 32.5,81.6 48,86V16Z" />
+    <!-- Right Shield Wing (Rich Emerald) -->
+    <path
+        android:fillColor="#0FA968"
+        android:pathData="M48,16L75,28V48C75,65.5 63.5,81.6 48,86V16Z" />
+    <!-- Inner Shield Core -->
+    <path
+        android:fillColor="#131D3B"
+        android:pathData="M48,24.2L28.2,33V48C28.2,61.2 36.6,73.3 48,77C59.4,73.3 67.8,61.2 67.8,48V33L48,24.2Z" />
+    <!-- Crisp Center Checkmark -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43.6,59.2L34.4,50L38.6,45.8L43.6,50.8L57.4,37L61.6,41.2L43.6,59.2Z" />
+</vector>
