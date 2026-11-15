@@ -10,7 +10,7 @@
     <string name="toggle_protection_cd_off">Protection is OFF. Tap to turn protection ON</string>
     <string name="blocked_requests_count">Blocked requests: %1$d</string>
     <string name="blocklist_domains_count">Blocklist: %1$d domains</string>
-    <string name="blocklist_updating_hint">Updating blocklist in background…</string>
+    <string name="blocklist_updating_hint">Updating blocklists in background…</string>
     <string name="private_dns_note">If ads still appear, turn off Private DNS and Secure DNS in Chrome.</string>
     <string name="open_log_button">Log</string>
     <string name="open_log_cd">Open blocked domains log screen</string>
@@ -49,6 +49,11 @@
 
     <!-- Settings Screen -->
     <string name="settings_screen_title">Settings</string>
+    <string name="blocklists_section_title">Blocklists</string>
+    <string name="source_status_updated">%1$d domains • Updated %2$s</string>
+    <string name="source_status_not_downloaded">0 domains • Not downloaded yet</string>
+    <string name="toggle_source_cd">Toggle %1$s blocklist source</string>
+    <string name="refresh_now_button">Refresh now</string>
     <string name="upstream_dns_section_title">Upstream DNS Resolver</string>
     <string name="dns_google_label">Google (8.8.8.8)</string>
     <string name="dns_cloudflare_label">Cloudflare (1.1.1.1)</string>

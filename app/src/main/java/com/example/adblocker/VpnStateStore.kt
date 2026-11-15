@@ -28,6 +28,7 @@ data class AdBlockerSettings(
     val upstreamOption: UpstreamDnsOption = UpstreamDnsOption.GOOGLE,
     val customDnsIp: String = "",
     val customBlocklistUrl: String = "",
+    val enabledSourceIds: Set<String> = BlocklistSources.DEFAULT_ENABLED_IDS,
     val bypassedPackages: Set<String> = emptySet()
 ) {
     val activeUpstreamDns: String
@@ -46,6 +47,7 @@ object VpnStateStore {
     private val KEY_UPSTREAM_OPTION = stringPreferencesKey("upstream_option")
     private val KEY_CUSTOM_DNS_IP = stringPreferencesKey("custom_dns_ip")
     private val KEY_CUSTOM_BLOCKLIST_URL = stringPreferencesKey("custom_blocklist_url")
+    private val KEY_ENABLED_SOURCE_IDS = stringSetPreferencesKey("enabled_source_ids")
     private val KEY_BYPASSED_PACKAGES = stringSetPreferencesKey("bypassed_packages")
 
     fun settingsFlow(context: Context): Flow<AdBlockerSettings> {
@@ -60,6 +62,7 @@ object VpnStateStore {
                 upstreamOption = option,
                 customDnsIp = prefs[KEY_CUSTOM_DNS_IP] ?: "",
                 customBlocklistUrl = prefs[KEY_CUSTOM_BLOCKLIST_URL] ?: "",
+                enabledSourceIds = prefs[KEY_ENABLED_SOURCE_IDS] ?: BlocklistSources.DEFAULT_ENABLED_IDS,
                 bypassedPackages = prefs[KEY_BYPASSED_PACKAGES] ?: emptySet()
             )
         }
@@ -79,6 +82,12 @@ object VpnStateStore {
 
     suspend fun getCustomBlocklistUrl(context: Context): String {
         return context.dataStore.data.map { it[KEY_CUSTOM_BLOCKLIST_URL] ?: "" }.first()
+    }
+
+    suspend fun getEnabledSourceIds(context: Context): Set<String> {
+        return context.dataStore.data.map {
+            it[KEY_ENABLED_SOURCE_IDS] ?: BlocklistSources.DEFAULT_ENABLED_IDS
+        }.first()
     }
 
     suspend fun setProtectionEnabled(context: Context, enabled: Boolean) {
@@ -122,6 +131,18 @@ object VpnStateStore {
     suspend fun setCustomBlocklistUrl(context: Context, url: String) {
         context.dataStore.edit { prefs ->
             prefs[KEY_CUSTOM_BLOCKLIST_URL] = url.trim()
+        }
+    }
+
+    suspend fun setSourceEnabled(context: Context, sourceId: String, enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            val current = (prefs[KEY_ENABLED_SOURCE_IDS] ?: BlocklistSources.DEFAULT_ENABLED_IDS).toMutableSet()
+            if (enabled) {
+                current.add(sourceId)
+            } else {
+                current.remove(sourceId)
+            }
+            prefs[KEY_ENABLED_SOURCE_IDS] = current
         }
     }
 

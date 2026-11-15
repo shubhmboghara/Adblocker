@@ -61,6 +61,7 @@ fun AdBlockerAppNavigation(
     val isProtectionEnabled by adBlockViewModel.isProtectionEnabled.collectAsStateWithLifecycle()
     val blockedCount by adBlockViewModel.blockedCount.collectAsStateWithLifecycle()
     val blocklistCount by adBlockViewModel.blocklistCount.collectAsStateWithLifecycle()
+    val sourceStatuses by adBlockViewModel.sourceStatuses.collectAsStateWithLifecycle()
     val whitelistSize by adBlockViewModel.whitelistSize.collectAsStateWithLifecycle()
     val lastDnsLatencyMs by adBlockViewModel.lastDnsLatencyMs.collectAsStateWithLifecycle()
     val droppedDohCount by adBlockViewModel.droppedDohCount.collectAsStateWithLifecycle()
@@ -178,7 +179,11 @@ fun AdBlockerAppNavigation(
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 settings = settings,
+                sourceStatuses = sourceStatuses,
+                isDownloadingBlocklist = isDownloadingBlocklist,
                 installedApps = installedApps,
+                onToggleBlocklistSource = adBlockViewModel::toggleBlocklistSource,
+                onRefreshNow = adBlockViewModel::refreshAllBlocklistsNow,
                 onSelectUpstreamDns = adBlockViewModel::updateUpstreamDns,
                 onSaveCustomBlocklist = adBlockViewModel::saveAndRefreshCustomBlocklist,
                 onToggleAppBypass = adBlockViewModel::toggleAppBypass,

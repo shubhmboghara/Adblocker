@@ -2,7 +2,6 @@ package com.example.adblocker
 
 import android.app.Application
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.VpnService
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
@@ -39,6 +38,7 @@ class AdBlockViewModel(application: Application) : AndroidViewModel(application)
     val isProtectionEnabled: StateFlow<Boolean> = VpnStats.isProtectionEnabled
     val blockedCount: StateFlow<Int> = VpnStats.blockedCount
     val blocklistCount: StateFlow<Int> = VpnStats.blocklistCount
+    val sourceStatuses: StateFlow<Map<String, SourceStatus>> = VpnStats.sourceStatuses
     val whitelistSize: StateFlow<Int> = VpnStats.whitelistSize
     val lastDnsLatencyMs: StateFlow<Long> = VpnStats.lastDnsLatencyMs
     val droppedDohCount: StateFlow<Int> = VpnStats.droppedDohCount
@@ -199,6 +199,34 @@ class AdBlockViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Toggles one of the 5 built-in blocklist sources in DataStore and rebuilds the merged
+     * sorted String array in the background without restarting the VPN service.
+     */
+    fun toggleBlocklistSource(sourceId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            VpnStateStore.setSourceEnabled(appContext, sourceId, enabled)
+            withContext(Dispatchers.IO) {
+                val sourceFile = BlocklistManager.getSourceFile(appContext, sourceId)
+                if (enabled && (!sourceFile.exists() || sourceFile.length() == 0L)) {
+                    BlocklistManager.downloadSingleSourceById(appContext, sourceId)
+                } else {
+                    BlocklistManager.loadBlocklist(appContext)
+                }
+            }
+        }
+    }
+
+    /**
+     * Re-downloads all enabled blocklist sources and rebuilds the merged sorted String array
+     * without restarting the VPN service.
+     */
+    fun refreshAllBlocklistsNow() {
+        viewModelScope.launch(Dispatchers.IO) {
+            BlocklistManager.downloadBlocklist(appContext)
+        }
+    }
+
     fun updateUpstreamDns(option: UpstreamDnsOption, customIp: String = "") {
         viewModelScope.launch {
             if (option == UpstreamDnsOption.CUSTOM && !VpnStateStore.isValidIpv4(customIp)) {
@@ -233,14 +261,7 @@ class AdBlockViewModel(application: Application) : AndroidViewModel(application)
             withContext(Dispatchers.IO) {
                 VpnStateStore.clearAll(appContext)
                 repository.clearAllTables()
-                val localBlocklist = File(appContext.filesDir, Config.LOCAL_BLOCKLIST_FILE)
-                if (localBlocklist.exists()) {
-                    localBlocklist.delete()
-                }
-                val tempBlocklist = File(appContext.filesDir, Config.LOCAL_BLOCKLIST_TEMP_FILE)
-                if (tempBlocklist.exists()) {
-                    tempBlocklist.delete()
-                }
+                BlocklistManager.deleteAllDownloadedLists(appContext)
                 BlocklistManager.loadBlocklist(appContext)
                 VpnStats.resetStats()
             }

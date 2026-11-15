@@ -15,6 +15,9 @@ object VpnStats {
     private val _blocklistCount = MutableStateFlow(0)
     val blocklistCount: StateFlow<Int> = _blocklistCount.asStateFlow()
 
+    private val _sourceStatuses = MutableStateFlow<Map<String, SourceStatus>>(emptyMap())
+    val sourceStatuses: StateFlow<Map<String, SourceStatus>> = _sourceStatuses.asStateFlow()
+
     private val _whitelistSize = MutableStateFlow(0)
     val whitelistSize: StateFlow<Int> = _whitelistSize.asStateFlow()
 
@@ -39,6 +42,10 @@ object VpnStats {
         _blocklistCount.value = count
     }
 
+    fun setSourceStatuses(statuses: Map<String, SourceStatus>) {
+        _sourceStatuses.value = statuses
+    }
+
     fun setWhitelistSize(size: Int) {
         _whitelistSize.value = size
     }
@@ -59,5 +66,6 @@ object VpnStats {
         _blockedCount.value = 0
         _lastDnsLatencyMs.value = -1L
         _droppedDohCount.value = 0
+        _sourceStatuses.value = emptyMap()
     }
 }

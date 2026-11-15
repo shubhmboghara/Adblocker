@@ -78,6 +78,6 @@ class ExampleRobolectricTest {
         assertFalse(afterClear.disclosureAccepted)
         assertFalse(afterClear.protectionEnabled)
         assertFalse(localBlocklist.exists())
-        assertEquals(20, BlocklistManager.currentSize)
+        assertTrue(BlocklistManager.currentSize > 100)
     }
 }

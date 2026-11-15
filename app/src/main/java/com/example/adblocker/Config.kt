@@ -35,13 +35,13 @@ object Config {
     const val HTTP_READ_TIMEOUT_MS = 30_000
 
     // Blocklist & Persistence configuration
-    const val DEFAULT_BLOCKLIST_URL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    const val LISTS_DIR_NAME = "lists"
+    const val CUSTOM_SOURCE_ID = "custom"
     const val ASSET_BLOCKLIST_FILE = "blocklist.txt"
     const val LOCAL_BLOCKLIST_FILE = "blocklist.txt"
     const val LOCAL_BLOCKLIST_TEMP_FILE = "blocklist.txt.tmp"
     const val CRASH_REPORT_FILE = "last_crash.txt"
 
-    const val COMPACT_BLOCKLIST_THRESHOLD = 150_000
     const val MAX_BLOCKED_LOG_ROWS = 500
     const val LOG_BATCH_INTERVAL_MS = 2_000L
     const val WORK_REPEAT_DAYS = 7L

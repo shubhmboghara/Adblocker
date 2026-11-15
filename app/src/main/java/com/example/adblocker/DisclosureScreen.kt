@@ -1,6 +1,8 @@
 package com.example.adblocker
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Shield
@@ -23,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -47,7 +50,8 @@ fun DisclosureScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .testTag("disclosure_screen")
+            .testTag("disclosure_screen"),
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -62,25 +66,37 @@ fun DisclosureScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 520.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Shield,
-                        contentDescription = stringResource(R.string.disclosure_title),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(56.dp)
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(72.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Filled.Shield,
+                                contentDescription = stringResource(R.string.disclosure_title),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(38.dp)
+                            )
+                        }
+                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
                         text = stringResource(R.string.disclosure_title),
@@ -91,26 +107,42 @@ fun DisclosureScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = stringResource(R.string.disclosure_body),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier.testTag("disclosure_body_text")
-                    )
-
-                    if (disclosureDeclined) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
-                            text = stringResource(R.string.disclosure_declined_notice),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.testTag("disclosure_declined_text")
+                            text = stringResource(R.string.disclosure_body),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Start,
+                            modifier = Modifier
+                                .padding(18.dp)
+                                .testTag("disclosure_body_text")
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    if (disclosureDeclined) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(R.string.disclosure_declined_notice),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .padding(12.dp)
+                                    .testTag("disclosure_declined_text")
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -118,24 +150,33 @@ fun DisclosureScreen(
                     ) {
                         OutlinedButton(
                             onClick = onDecline,
+                            shape = MaterialTheme.shapes.small,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             modifier = Modifier
                                 .weight(1f)
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .sizeIn(minWidth = 48.dp, minHeight = 52.dp)
                                 .semantics { contentDescription = declineCd }
                                 .testTag("disclosure_decline_button")
                         ) {
-                            Text(text = stringResource(R.string.disclosure_decline_button))
+                            Text(
+                                text = stringResource(R.string.disclosure_decline_button),
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
 
                         Button(
                             onClick = onAgree,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier
                                 .weight(1f)
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .sizeIn(minWidth = 48.dp, minHeight = 52.dp)
                                 .semantics { contentDescription = agreeCd }
                                 .testTag("disclosure_agree_button")
                         ) {
-                            Text(text = stringResource(R.string.disclosure_agree_button))
+                            Text(
+                                text = stringResource(R.string.disclosure_agree_button),
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
                     }
                 }

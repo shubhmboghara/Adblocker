@@ -1,5 +1,6 @@
 package com.example.adblocker
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,28 +11,40 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,12 +60,19 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.R
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settings: AdBlockerSettings,
+    sourceStatuses: Map<String, SourceStatus>,
+    isDownloadingBlocklist: Boolean,
     installedApps: List<InstalledAppInfo>,
+    onToggleBlocklistSource: (String, Boolean) -> Unit,
+    onRefreshNow: () -> Unit,
     onSelectUpstreamDns: (UpstreamDnsOption, String) -> Unit,
     onSaveCustomBlocklist: (String) -> Unit,
     onToggleAppBypass: (String, Boolean) -> Unit,
@@ -73,6 +93,10 @@ fun SettingsScreen(
 
     var appSearchQuery by rememberSaveable { mutableStateOf("") }
 
+    val dateFormatter = remember {
+        SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+    }
+
     val filteredApps = remember(installedApps, appSearchQuery) {
         val q = appSearchQuery.trim().lowercase()
         if (q.isEmpty()) {
@@ -90,10 +114,14 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("settings_screen"),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = stringResource(R.string.settings_screen_title))
+                    Text(
+                        text = stringResource(R.string.settings_screen_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 navigationIcon = {
                     IconButton(
@@ -107,7 +135,10 @@ fun SettingsScreen(
                             contentDescription = backCd
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { innerPadding ->
@@ -118,22 +149,155 @@ fun SettingsScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Upstream DNS Section
+            // 1. Blocklists Section (5 Sources + Switches + Entry Counts + Last Updated + Refresh Now)
+            item(key = "blocklists_sources_section") {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.Shield,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = stringResource(R.string.blocklists_section_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        BlocklistSources.ALL.forEachIndexed { index, source ->
+                            val isEnabled = settings.enabledSourceIds.contains(source.id)
+                            val status = sourceStatuses[source.id]
+                            val switchCd = stringResource(R.string.toggle_source_cd, source.displayName)
+                            val subtitle = if (status != null && status.lastUpdatedMillis > 0L) {
+                                val formattedTime = dateFormatter.format(Date(status.lastUpdatedMillis))
+                                stringResource(
+                                    R.string.source_status_updated,
+                                    status.entryCount,
+                                    formattedTime
+                                )
+                            } else {
+                                stringResource(R.string.source_status_not_downloaded)
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .sizeIn(minHeight = 56.dp)
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 12.dp)
+                                ) {
+                                    Text(
+                                        text = source.displayName,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = subtitle,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.testTag("source_status_${source.id}")
+                                    )
+                                }
+
+                                Switch(
+                                    checked = isEnabled,
+                                    onCheckedChange = { checked ->
+                                        onToggleBlocklistSource(source.id, checked)
+                                    },
+                                    modifier = Modifier
+                                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                        .semantics { contentDescription = switchCd }
+                                        .testTag("source_switch_${source.id}")
+                                )
+                            }
+
+                            if (index < BlocklistSources.ALL.lastIndex) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            }
+                        }
+
+                        if (isDownloadingBlocklist) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(3.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Button(
+                            onClick = onRefreshNow,
+                            enabled = !isDownloadingBlocklist,
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .testTag("refresh_now_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = stringResource(R.string.refresh_now_button))
+                        }
+                    }
+                }
+            }
+
+            // 2. Upstream DNS Section
             item(key = "upstream_dns_section") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.upstream_dns_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.Dns,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = stringResource(R.string.upstream_dns_section_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         val dnsOptions = listOf(
                             UpstreamDnsOption.GOOGLE to stringResource(R.string.dns_google_label),
@@ -192,6 +356,7 @@ fun SettingsScreen(
                             placeholder = { Text(text = stringResource(R.string.custom_dns_placeholder)) },
                             isError = customIpError,
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("custom_dns_input")
@@ -204,7 +369,7 @@ fun SettingsScreen(
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = {
                                 if (VpnStateStore.isValidIpv4(customIpInput)) {
@@ -214,6 +379,7 @@ fun SettingsScreen(
                                     customIpError = true
                                 }
                             },
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier
                                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                 .testTag("apply_custom_dns_button")
@@ -224,22 +390,35 @@ fun SettingsScreen(
                 }
             }
 
-            // 2. Custom Blocklist URL Section
+            // 3. Custom Blocklist URL Section
             item(key = "custom_blocklist_section") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.custom_blocklist_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.CloudDownload,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = stringResource(R.string.custom_blocklist_section_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         OutlinedTextField(
                             value = customUrlInput,
                             onValueChange = {
@@ -249,6 +428,7 @@ fun SettingsScreen(
                             placeholder = { Text(text = stringResource(R.string.custom_blocklist_placeholder)) },
                             isError = customUrlError,
                             singleLine = true,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("custom_blocklist_input")
@@ -261,7 +441,7 @@ fun SettingsScreen(
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = {
                                 if (VpnStateStore.isValidHttpsUrl(customUrlInput)) {
@@ -271,6 +451,7 @@ fun SettingsScreen(
                                     customUrlError = true
                                 }
                             },
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier
                                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                 .testTag("save_custom_blocklist_button")
@@ -281,33 +462,46 @@ fun SettingsScreen(
                 }
             }
 
-            // 3. Actions: About, Reset Disclosure, Clear All Data
+            // 4. Actions: About, Reset Disclosure, Clear All Data
             item(key = "settings_actions_section") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         FilledTonalButton(
                             onClick = onOpenAbout,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                 .testTag("open_about_button")
                         ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(text = stringResource(R.string.open_about_button))
                         }
 
                         OutlinedButton(
                             onClick = onResetDisclosure,
+                            shape = MaterialTheme.shapes.small,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
@@ -318,6 +512,8 @@ fun SettingsScreen(
 
                         OutlinedButton(
                             onClick = onClearAllData,
+                            shape = MaterialTheme.shapes.small,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
@@ -332,23 +528,39 @@ fun SettingsScreen(
                 }
             }
 
-            // 4. Per-App Bypass Header & Search
+            // 5. Per-App Bypass Header & Search
             item(key = "per_app_bypass_header") {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(
-                            R.string.per_app_bypass_section_title,
-                            settings.bypassedPackages.size
-                        ),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Apps,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.per_app_bypass_section_title,
+                                settings.bypassedPackages.size
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = appSearchQuery,
                         onValueChange = { appSearchQuery = it },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = null
+                            )
+                        },
                         placeholder = { Text(text = stringResource(R.string.search_apps_placeholder)) },
                         singleLine = true,
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("search_apps_input")
@@ -371,16 +583,20 @@ fun SettingsScreen(
                         }
                         .semantics { contentDescription = bypassCd }
                         .testTag("bypass_row_${appInfo.packageName}"),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .sizeIn(minHeight = 52.dp)
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .sizeIn(minHeight = 56.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {

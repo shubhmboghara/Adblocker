@@ -1,5 +1,6 @@
 package com.example.adblocker
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,12 +19,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,10 +57,14 @@ fun DiagnosticsScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("diagnostics_screen"),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = stringResource(R.string.diagnostics_screen_title))
+                    Text(
+                        text = stringResource(R.string.diagnostics_screen_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 navigationIcon = {
                     IconButton(
@@ -72,7 +78,10 @@ fun DiagnosticsScreen(
                             contentDescription = backCd
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { innerPadding ->
@@ -82,20 +91,24 @@ fun DiagnosticsScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     DiagnosticRow(
                         label = stringResource(R.string.diag_vpn_running),
@@ -105,22 +118,27 @@ fun DiagnosticsScreen(
                             stringResource(R.string.diag_no)
                         }
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     DiagnosticRow(
                         label = stringResource(R.string.diag_upstream_dns),
                         value = activeUpstreamDns
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     DiagnosticRow(
                         label = stringResource(R.string.diag_blocklist_count),
                         value = blocklistCount.toString()
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     DiagnosticRow(
                         label = stringResource(R.string.diag_whitelist_size),
                         value = whitelistSize.toString()
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     DiagnosticRow(
                         label = stringResource(R.string.diag_blocked_count),
                         value = blockedCount.toString()
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     DiagnosticRow(
                         label = stringResource(R.string.diag_last_latency),
                         value = if (lastDnsLatencyMs >= 0L) {
@@ -129,6 +147,7 @@ fun DiagnosticsScreen(
                             stringResource(R.string.diag_latency_na)
                         }
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     DiagnosticRow(
                         label = stringResource(R.string.diag_dropped_doh),
                         value = droppedDohCount.toString()
@@ -138,19 +157,24 @@ fun DiagnosticsScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
                         onClick = onRunDnsTest,
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier
                             .fillMaxWidth()
                             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
@@ -172,6 +196,7 @@ fun DiagnosticsScreen(
 
                     FilledTonalButton(
                         onClick = onRunBlockTest,
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier
                             .fillMaxWidth()
                             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)

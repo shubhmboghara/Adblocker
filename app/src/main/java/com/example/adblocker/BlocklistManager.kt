@@ -2,6 +2,7 @@ package com.example.adblocker
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.BufferedWriter
@@ -17,11 +18,6 @@ import java.util.Locale
 sealed interface DomainLookupTable {
     val size: Int
     fun contains(domain: String): Boolean
-}
-
-class HashSetDomainTable(private val set: HashSet<String>) : DomainLookupTable {
-    override val size: Int get() = set.size
-    override fun contains(domain: String): Boolean = set.contains(domain)
 }
 
 class CompactSortedDomainTable(private val sortedDomains: Array<String>) : DomainLookupTable {
@@ -53,7 +49,7 @@ object BlocklistManager {
     )
 
     @Volatile
-    private var lookupTable: DomainLookupTable = HashSetDomainTable(HashSet())
+    private var lookupTable: DomainLookupTable = CompactSortedDomainTable(emptyArray())
 
     val currentSize: Int
         get() = lookupTable.size
@@ -69,22 +65,41 @@ object BlocklistManager {
         }
     }
 
-    fun setTestBlocklist(domains: Collection<String>, compactThreshold: Int = Config.COMPACT_BLOCKLIST_THRESHOLD) {
+    fun isBlockedInTable(domain: String, table: DomainLookupTable): Boolean {
+        return DomainMatcher.isDomainOrParentInSet(domain) { candidate ->
+            table.contains(candidate)
+        }
+    }
+
+    fun setTestBlocklist(domains: Collection<String>) {
         val set = HashSet<String>(domains.size)
         for (d in domains) {
             val clean = DomainMatcher.normalizeDomain(d)
-            if (clean.isNotEmpty() && !IGNORED_HOSTS.contains(clean)) {
+            if (clean.isNotEmpty() && !IGNORED_HOSTS.contains(clean) && !isIpAddress(clean)) {
                 set.add(clean)
             }
         }
-        val table = buildLookupTable(set, compactThreshold)
+        val table = buildLookupTable(set)
         lookupTable = table
         VpnStats.setBlocklistCount(table.size)
     }
 
     /**
-     * Parses a single line in hosts format (e.g. "0.0.0.0 ads.example.com" or "127.0.0.1 tracker.net")
-     * or plain domain list format. Returns null for comments, blank lines, localhost, and 0.0.0.0.
+     * Returns true if the given string is an IPv4 or IPv6 literal rather than a domain name.
+     */
+    fun isIpAddress(candidate: String): Boolean {
+        if (candidate.contains(':')) return true
+        val parts = candidate.split('.')
+        if (parts.all { it.isNotEmpty() && it.all { ch -> ch.isDigit() } }) {
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Parses a single line in hosts format starting with 0.0.0.0 or 127.0.0.1 followed by a domain.
+     * Strips inline comments (#...), trims whitespace, strips trailing dots, and lowercases.
+     * Skips comments, blank lines, localhost, local, broadcasthost, and any IP address entry.
      */
     fun parseHostsLine(rawLine: String): String? {
         val commentIdx = rawLine.indexOf('#')
@@ -97,160 +112,293 @@ object BlocklistManager {
         var tokenEnd = tokenStart
         while (tokenEnd < len && !line[tokenEnd].isWhitespace()) tokenEnd++
 
-        val firstToken = line.substring(tokenStart, tokenEnd)
-        var secondStart = tokenEnd
-        while (secondStart < len && line[secondStart].isWhitespace()) secondStart++
-
-        val rawDomain = if (secondStart < len) {
-            var secondEnd = secondStart
-            while (secondEnd < len && !line[secondEnd].isWhitespace()) secondEnd++
-            line.substring(secondStart, secondEnd)
-        } else {
-            firstToken
+        val prefixIp = line.substring(tokenStart, tokenEnd)
+        if (prefixIp != "0.0.0.0" && prefixIp != "127.0.0.1") {
+            return null
         }
 
+        var secondStart = tokenEnd
+        while (secondStart < len && line[secondStart].isWhitespace()) secondStart++
+        if (secondStart >= len) return null
+
+        var secondEnd = secondStart
+        while (secondEnd < len && !line[secondEnd].isWhitespace()) secondEnd++
+        val rawDomain = line.substring(secondStart, secondEnd)
+
         val domain = rawDomain.trim().trimEnd('.').lowercase(Locale.ROOT)
-        if (domain.isEmpty() || IGNORED_HOSTS.contains(domain) || !domain.contains('.')) {
+        if (
+            domain.isEmpty() ||
+            IGNORED_HOSTS.contains(domain) ||
+            !domain.contains('.') ||
+            isIpAddress(domain)
+        ) {
             return null
         }
         return domain
     }
 
     /**
-     * Reads a hosts stream line by line using BufferedReader (never readText()) to avoid OutOfMemoryError.
+     * Reads one or more BufferedReaders line by line, deduplicates all valid domains,
+     * and returns a CompactSortedDomainTable backed by a sorted Array<String>.
      */
+    fun parseAndMergeStreams(readers: List<BufferedReader>): CompactSortedDomainTable {
+        val deduplicated = HashSet<String>()
+        for (reader in readers) {
+            reader.forEachLine { line ->
+                val domain = parseHostsLine(line)
+                if (domain != null) {
+                    deduplicated.add(domain)
+                }
+            }
+        }
+        return buildLookupTable(deduplicated)
+    }
+
     fun parseHostsStream(
         reader: BufferedReader,
-        compactThreshold: Int = Config.COMPACT_BLOCKLIST_THRESHOLD
-    ): DomainLookupTable {
-        val tempSet = HashSet<String>()
-        reader.forEachLine { line ->
-            val domain = parseHostsLine(line)
-            if (domain != null) {
-                tempSet.add(domain)
-            }
-        }
-        return buildLookupTable(tempSet, compactThreshold)
+        @Suppress("UNUSED_PARAMETER") compactThreshold: Int = 0
+    ): CompactSortedDomainTable {
+        return parseAndMergeStreams(listOf(reader))
     }
 
-    fun buildLookupTable(
-        domains: HashSet<String>,
-        compactThreshold: Int = Config.COMPACT_BLOCKLIST_THRESHOLD
-    ): DomainLookupTable {
-        return if (domains.size > compactThreshold) {
-            val array = domains.toTypedArray()
-            array.sort()
-            domains.clear()
-            CompactSortedDomainTable(array)
-        } else {
-            HashSetDomainTable(domains)
+    fun buildLookupTable(domains: HashSet<String>): CompactSortedDomainTable {
+        val array = domains.toTypedArray()
+        domains.clear()
+        array.sort()
+        return CompactSortedDomainTable(array)
+    }
+
+    fun getListsDir(context: Context): File {
+        val dir = File(context.filesDir, Config.LISTS_DIR_NAME)
+        if (!dir.exists()) {
+            dir.mkdirs()
         }
+        return dir
+    }
+
+    fun getSourceFile(context: Context, sourceId: String): File {
+        return File(getListsDir(context), "$sourceId.txt")
     }
 
     /**
-     * Loads the blocklist from filesDir/blocklist.txt if it exists, otherwise falls back to assets/blocklist.txt.
-     * Swaps the lookup table atomically.
+     * Merges all enabled blocklist source files from filesDir/lists/<id>.txt plus any custom blocklist file
+     * into one deduplicated sorted String array, swapping it in atomically via the volatile lookupTable reference.
+     * Falls back to assets/blocklist.txt (or legacy filesDir/blocklist.txt) only when no downloaded list exists.
      */
-    fun loadBlocklist(context: Context): Int {
-        val localFile = File(context.filesDir, Config.LOCAL_BLOCKLIST_FILE)
-        val table: DomainLookupTable = try {
-            if (localFile.exists() && localFile.length() > 0L) {
-                BufferedReader(InputStreamReader(FileInputStream(localFile), Charsets.UTF_8)).use { reader ->
-                    parseHostsStream(reader)
+    fun loadBlocklist(context: Context, enabledIdsOverride: Set<String>? = null): Int {
+        val enabledIds = enabledIdsOverride ?: runBlocking(Dispatchers.IO) {
+            VpnStateStore.getEnabledSourceIds(context)
+        }
+        val customUrl = runBlocking(Dispatchers.IO) {
+            VpnStateStore.getCustomBlocklistUrl(context).trim()
+        }
+
+        val mergedSet = HashSet<String>()
+        val statusMap = LinkedHashMap<String, SourceStatus>()
+        var anyDownloadedFileFound = false
+
+        for (source in BlocklistSources.ALL) {
+            val file = getSourceFile(context, source.id)
+            if (file.exists() && file.length() > 0L) {
+                anyDownloadedFileFound = true
+                var sourceEntryCount = 0
+                val isEnabled = enabledIds.contains(source.id)
+                try {
+                    BufferedReader(InputStreamReader(FileInputStream(file), Charsets.UTF_8)).use { reader ->
+                        reader.forEachLine { line ->
+                            val domain = parseHostsLine(line)
+                            if (domain != null) {
+                                sourceEntryCount++
+                                if (isEnabled) {
+                                    mergedSet.add(domain)
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
                 }
+                statusMap[source.id] = SourceStatus(
+                    id = source.id,
+                    entryCount = sourceEntryCount,
+                    lastUpdatedMillis = file.lastModified()
+                )
             } else {
-                BufferedReader(
-                    InputStreamReader(context.assets.open(Config.ASSET_BLOCKLIST_FILE), Charsets.UTF_8)
-                ).use { reader ->
-                    parseHostsStream(reader)
+                statusMap[source.id] = SourceStatus(
+                    id = source.id,
+                    entryCount = 0,
+                    lastUpdatedMillis = 0L
+                )
+            }
+        }
+
+        if (customUrl.startsWith("https://", ignoreCase = true)) {
+            val customFile = getSourceFile(context, Config.CUSTOM_SOURCE_ID)
+            if (customFile.exists() && customFile.length() > 0L) {
+                anyDownloadedFileFound = true
+                try {
+                    BufferedReader(InputStreamReader(FileInputStream(customFile), Charsets.UTF_8)).use { reader ->
+                        reader.forEachLine { line ->
+                            val domain = parseHostsLine(line)
+                            if (domain != null) {
+                                mergedSet.add(domain)
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
                 }
             }
-        } catch (_: Exception) {
+        }
+
+        // Legacy single-file or bundled assets/blocklist.txt fallback when no downloaded list exists
+        if (!anyDownloadedFileFound) {
+            val legacyFile = File(context.filesDir, Config.LOCAL_BLOCKLIST_FILE)
             try {
-                BufferedReader(
-                    InputStreamReader(context.assets.open(Config.ASSET_BLOCKLIST_FILE), Charsets.UTF_8)
-                ).use { reader ->
-                    parseHostsStream(reader)
+                if (legacyFile.exists() && legacyFile.length() > 0L) {
+                    BufferedReader(InputStreamReader(FileInputStream(legacyFile), Charsets.UTF_8)).use { reader ->
+                        reader.forEachLine { line ->
+                            val domain = parseHostsLine(line)
+                            if (domain != null) {
+                                mergedSet.add(domain)
+                            }
+                        }
+                    }
+                } else {
+                    BufferedReader(
+                        InputStreamReader(context.assets.open(Config.ASSET_BLOCKLIST_FILE), Charsets.UTF_8)
+                    ).use { reader ->
+                        reader.forEachLine { line ->
+                            val domain = parseHostsLine(line)
+                            if (domain != null) {
+                                mergedSet.add(domain)
+                            }
+                        }
+                    }
                 }
             } catch (_: Exception) {
-                HashSetDomainTable(HashSet())
             }
         }
 
-        lookupTable = table
-        VpnStats.setBlocklistCount(table.size)
-        return table.size
+        val newTable = buildLookupTable(mergedSet)
+        // Atomic volatile swap so the DNS thread never sees a half-built list
+        lookupTable = newTable
+        VpnStats.setBlocklistCount(newTable.size)
+        VpnStats.setSourceStatuses(statusMap)
+        return newTable.size
     }
 
     /**
-     * Downloads the StevenBlack hosts file (and optional HTTPS custom blocklist URL) to a temporary file
-     * and atomically renames it to filesDir/blocklist.txt only if the download succeeds.
+     * Downloads each enabled source separately to filesDir/lists/<id>.txt via a temp file first,
+     * renaming only on success so a failed download never corrupts or deletes the existing working copy.
      */
     suspend fun downloadBlocklist(context: Context, customUrl: String? = null): Boolean =
         withContext(Dispatchers.IO) {
             VpnStats.setDownloadingBlocklist(true)
-            val tempFile = File(context.filesDir, Config.LOCAL_BLOCKLIST_TEMP_FILE)
-            val targetFile = File(context.filesDir, Config.LOCAL_BLOCKLIST_FILE)
             try {
+                val enabledIds = VpnStateStore.getEnabledSourceIds(context)
                 val resolvedCustomUrl = customUrl?.trim()
                     ?: VpnStateStore.getCustomBlocklistUrl(context).trim()
 
-                var linesWritten = 0
-                BufferedWriter(OutputStreamWriter(FileOutputStream(tempFile, false), Charsets.UTF_8)).use { writer ->
-                    linesWritten += downloadUrlToWriter(Config.DEFAULT_BLOCKLIST_URL, writer)
-                    if (resolvedCustomUrl.startsWith("https://", ignoreCase = true)) {
-                        try {
-                            writer.newLine()
-                            linesWritten += downloadUrlToWriter(resolvedCustomUrl, writer)
-                        } catch (_: Exception) {
-                            // Keep main blocklist intact even if optional custom URL fails
+                var anySucceeded = false
+                for (source in BlocklistSources.ALL) {
+                    if (enabledIds.contains(source.id)) {
+                        val ok = downloadSingleSource(context, source.id, source.url)
+                        if (ok) {
+                            anySucceeded = true
                         }
                     }
                 }
 
-                if (linesWritten > 0 && tempFile.exists() && tempFile.length() > 0L) {
-                    val renamed = tempFile.renameTo(targetFile)
-                    if (!renamed) {
-                        tempFile.copyTo(targetFile, overwrite = true)
-                        tempFile.delete()
+                if (resolvedCustomUrl.startsWith("https://", ignoreCase = true)) {
+                    val customOk = downloadSingleSource(context, Config.CUSTOM_SOURCE_ID, resolvedCustomUrl)
+                    if (customOk) {
+                        anySucceeded = true
                     }
-                    loadBlocklist(context)
-                    true
-                } else {
-                    tempFile.delete()
-                    false
                 }
-            } catch (_: Exception) {
-                tempFile.delete()
-                false
+
+                loadBlocklist(context, enabledIds)
+                anySucceeded
             } finally {
                 VpnStats.setDownloadingBlocklist(false)
             }
         }
 
-    private fun downloadUrlToWriter(urlString: String, writer: BufferedWriter): Int {
-        val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = Config.HTTP_CONNECT_TIMEOUT_MS
-            readTimeout = Config.HTTP_READ_TIMEOUT_MS
-            instanceFollowRedirects = true
-        }
-        try {
-            val code = connection.responseCode
-            if (code != HttpURLConnection.HTTP_OK) {
-                throw IllegalStateException("HTTP status $code")
+    suspend fun downloadSingleSourceById(context: Context, sourceId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val source = BlocklistSources.ALL.find { it.id == sourceId } ?: return@withContext false
+            VpnStats.setDownloadingBlocklist(true)
+            try {
+                val ok = downloadSingleSource(context, source.id, source.url)
+                loadBlocklist(context)
+                ok
+            } finally {
+                VpnStats.setDownloadingBlocklist(false)
             }
-            var count = 0
-            BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { reader ->
-                reader.forEachLine { line ->
-                    writer.write(line)
-                    writer.newLine()
-                    count++
+        }
+
+    private fun downloadSingleSource(context: Context, sourceId: String, urlString: String): Boolean {
+        val listsDir = getListsDir(context)
+        val tempFile = File(listsDir, "$sourceId.txt.tmp")
+        val targetFile = File(listsDir, "$sourceId.txt")
+        return try {
+            var validDomainsWritten = 0
+            BufferedWriter(OutputStreamWriter(FileOutputStream(tempFile, false), Charsets.UTF_8)).use { writer ->
+                val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = Config.HTTP_CONNECT_TIMEOUT_MS
+                    readTimeout = Config.HTTP_READ_TIMEOUT_MS
+                    instanceFollowRedirects = true
+                }
+                try {
+                    val code = connection.responseCode
+                    if (code != HttpURLConnection.HTTP_OK) {
+                        throw IllegalStateException("HTTP status $code")
+                    }
+                    BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { reader ->
+                        reader.forEachLine { line ->
+                            val domain = parseHostsLine(line)
+                            if (domain != null) {
+                                writer.write("0.0.0.0 ")
+                                writer.write(domain)
+                                writer.newLine()
+                                validDomainsWritten++
+                            }
+                        }
+                    }
+                } finally {
+                    connection.disconnect()
                 }
             }
-            return count
-        } finally {
-            connection.disconnect()
+
+            if (validDomainsWritten > 0 && tempFile.exists() && tempFile.length() > 0L) {
+                val renamed = tempFile.renameTo(targetFile)
+                if (!renamed) {
+                    tempFile.copyTo(targetFile, overwrite = true)
+                    tempFile.delete()
+                }
+                true
+            } else {
+                tempFile.delete()
+                false
+            }
+        } catch (_: Exception) {
+            tempFile.delete()
+            false
+        }
+    }
+
+    fun deleteAllDownloadedLists(context: Context) {
+        val listsDir = File(context.filesDir, Config.LISTS_DIR_NAME)
+        if (listsDir.exists()) {
+            listsDir.listFiles()?.forEach { it.delete() }
+            listsDir.delete()
+        }
+        val legacyFile = File(context.filesDir, Config.LOCAL_BLOCKLIST_FILE)
+        if (legacyFile.exists()) {
+            legacyFile.delete()
+        }
+        val tempLegacyFile = File(context.filesDir, Config.LOCAL_BLOCKLIST_TEMP_FILE)
+        if (tempLegacyFile.exists()) {
+            tempLegacyFile.delete()
         }
     }
 }

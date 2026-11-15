@@ -1,7 +1,7 @@
 package com.example
 
 import com.example.adblocker.BlocklistManager
-import com.example.adblocker.CompactSortedDomainTable
+import com.example.adblocker.BlocklistSources
 import com.example.adblocker.Config
 import com.example.adblocker.DnsPacketUtils
 import com.example.adblocker.DohBlocker
@@ -116,7 +116,6 @@ class ExampleUnitTest {
 
     @Test
     fun calculateIpv4Checksum_matchesRfc1071TestVector() {
-        // RFC 1071 / Wikipedia IPv4 header checksum example (checksum bytes at 10..11 zeroed)
         val header = byteArrayOf(
             0x45, 0x00, 0x00, 0x73,
             0x00, 0x00, 0x40, 0x00,
@@ -148,29 +147,63 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun hostsFileParsing_skipsCommentsBlankLinesLocalhostAndZeroIp_andSupportsCompactTable() {
-        val sampleHosts = """
-            # Title comment
+    fun parseHostsLine_accepts0000And127001_andSkipsCommentsLocalhostAndIpAddresses() {
+        assertEquals("ads.example.com", BlocklistManager.parseHostsLine("0.0.0.0 ADS.EXAMPLE.COM. # inline comment"))
+        assertEquals("tracker.example.org", BlocklistManager.parseHostsLine("127.0.0.1 Tracker.Example.org"))
+        assertNull(BlocklistManager.parseHostsLine("# full line comment"))
+        assertNull(BlocklistManager.parseHostsLine("   "))
+        assertNull(BlocklistManager.parseHostsLine("127.0.0.1 localhost"))
+        assertNull(BlocklistManager.parseHostsLine("0.0.0.0 local"))
+        assertNull(BlocklistManager.parseHostsLine("0.0.0.0 broadcasthost"))
+        assertNull(BlocklistManager.parseHostsLine("0.0.0.0 0.0.0.0"))
+        assertNull(BlocklistManager.parseHostsLine("0.0.0.0 192.168.1.1"))
+        assertNull(BlocklistManager.parseHostsLine("127.0.0.1 ::1"))
+    }
+
+    @Test
+    fun mergeOverlappingSources_deduplicatesIntoSortedArray_andSupportsBinarySearchParentMatching() {
+        val source1 = """
+            # Source 1 (StevenBlack)
+            0.0.0.0 ads.example.com
+            0.0.0.0 doubleclick.net
             127.0.0.1 localhost
-            ::1 ip6-localhost
             0.0.0.0 0.0.0.0
-            
-            0.0.0.0 ads.example.com # inline comment
-            127.0.0.1 tracker.example.org
-            0.0.0.0 metrics.adserver.io
         """.trimIndent()
 
-        val table = BlocklistManager.parseHostsStream(
-            reader = BufferedReader(StringReader(sampleHosts)),
-            compactThreshold = 2 // Force CompactSortedDomainTable since 3 > 2
+        val source2 = """
+            # Source 2 (AdAway - overlaps on doubleclick.net)
+            127.0.0.1 DOUBLECLICK.NET.
+            127.0.0.1 telemetry.tracker.io # comment
+            0.0.0.0 10.0.0.1
+        """.trimIndent()
+
+        val mergedTable = BlocklistManager.parseAndMergeStreams(
+            listOf(
+                BufferedReader(StringReader(source1)),
+                BufferedReader(StringReader(source2))
+            )
         )
-        assertTrue(table is CompactSortedDomainTable)
-        assertEquals(3, table.size)
-        assertTrue(table.contains("ads.example.com"))
-        assertTrue(table.contains("tracker.example.org"))
-        assertTrue(table.contains("metrics.adserver.io"))
-        assertFalse(table.contains("localhost"))
-        assertFalse(table.contains("0.0.0.0"))
+
+        // 3 unique domains across the 2 overlapping sources
+        assertEquals(3, mergedTable.size)
+        assertTrue(mergedTable.contains("ads.example.com"))
+        assertTrue(mergedTable.contains("doubleclick.net"))
+        assertTrue(mergedTable.contains("telemetry.tracker.io"))
+
+        // Binary-search lookup with parent-domain matching
+        assertTrue(BlocklistManager.isBlockedInTable("static.doubleclick.net", mergedTable))
+        assertTrue(BlocklistManager.isBlockedInTable("eu.telemetry.tracker.io", mergedTable))
+        assertFalse(BlocklistManager.isBlockedInTable("example.com", mergedTable))
+    }
+
+    @Test
+    fun blocklistSources_hasFiveConfiguredSourcesWithExpectedDefaults() {
+        assertEquals(5, BlocklistSources.ALL.size)
+        assertTrue(BlocklistSources.STEVEN_BLACK.defaultEnabled)
+        assertTrue(BlocklistSources.ADAWAY.defaultEnabled)
+        assertTrue(BlocklistSources.PETER_LOWE.defaultEnabled)
+        assertTrue(BlocklistSources.ONE_HOSTS_LITE.defaultEnabled)
+        assertFalse(BlocklistSources.HAGEZI_PRO.defaultEnabled)
     }
 
     @Test
