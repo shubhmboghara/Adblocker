@@ -1,0 +1,104 @@
+<resources>
+    <string name="app_name">AdBlocker</string>
+
+    <!-- Main Screen -->
+    <string name="protection_on">Protection ON</string>
+    <string name="protection_off">Protection OFF</string>
+    <string name="toggle_on_label">ON</string>
+    <string name="toggle_off_label">OFF</string>
+    <string name="toggle_protection_cd_on">Protection is ON. Tap to turn protection OFF</string>
+    <string name="toggle_protection_cd_off">Protection is OFF. Tap to turn protection ON</string>
+    <string name="blocked_requests_count">Blocked requests: %1$d</string>
+    <string name="blocklist_domains_count">Blocklist: %1$d domains</string>
+    <string name="blocklist_updating_hint">Updating blocklist in background…</string>
+    <string name="private_dns_note">If ads still appear, turn off Private DNS and Secure DNS in Chrome.</string>
+    <string name="open_log_button">Log</string>
+    <string name="open_log_cd">Open blocked domains log screen</string>
+    <string name="open_settings_cd">Open settings screen</string>
+
+    <!-- Prominent Disclosure Screen -->
+    <string name="disclosure_title">Local VPN Disclosure</string>
+    <string name="disclosure_body">This app uses Android\'s VpnService to filter DNS requests locally on your device. No browsing data or domain names are collected or sent anywhere. The only network requests made by this app are blocklist downloads and DNS forwarding to your chosen upstream resolver.</string>
+    <string name="disclosure_declined_notice">You declined the VPN disclosure. Protection remains disabled until you agree.</string>
+    <string name="disclosure_agree_button">Agree</string>
+    <string name="disclosure_decline_button">Decline</string>
+    <string name="disclosure_agree_cd">Agree to local VPN disclosure and continue</string>
+    <string name="disclosure_decline_cd">Decline local VPN disclosure and keep protection disabled</string>
+
+    <!-- Crash Report Dialog -->
+    <string name="crash_dialog_title">Previous Session Crash Report</string>
+    <string name="crash_dialog_subtitle">A local crash trace was saved on your device. Nothing has been sent over the network.</string>
+    <string name="crash_copy_button">Copy report</string>
+    <string name="crash_dismiss_button">Dismiss</string>
+    <string name="crash_copied_toast">Crash report copied to clipboard</string>
+
+    <!-- Log Screen -->
+    <string name="log_screen_title">Blocked Domains Log</string>
+    <string name="navigate_back_cd">Navigate back</string>
+    <string name="clear_log_button">Clear log</string>
+    <string name="clear_log_cd">Clear all blocked log entries</string>
+    <string name="log_empty_title">No blocked requests recorded yet</string>
+    <string name="log_empty_subtitle">When protection is ON, blocked ad and tracker domains will appear here.</string>
+    <string name="log_repeat_count">Blocked %1$d×</string>
+    <string name="allow_domain_button">Allow</string>
+    <string name="allowed_domain_badge">Allowed</string>
+    <string name="remove_whitelist_button">Remove</string>
+    <string name="allow_domain_cd">Add %1$s to whitelist</string>
+    <string name="remove_whitelist_cd">Remove %1$s from whitelist</string>
+    <string name="whitelisted_section_title">Whitelisted Domains (%1$d)</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_screen_title">Settings</string>
+    <string name="upstream_dns_section_title">Upstream DNS Resolver</string>
+    <string name="dns_google_label">Google (8.8.8.8)</string>
+    <string name="dns_cloudflare_label">Cloudflare (1.1.1.1)</string>
+    <string name="dns_quad9_label">Quad9 (9.9.9.9)</string>
+    <string name="dns_custom_label">Custom IPv4</string>
+    <string name="custom_dns_placeholder">e.g. 208.67.222.222</string>
+    <string name="custom_dns_error">Enter a valid IPv4 address (e.g. 8.8.4.4)</string>
+    <string name="apply_custom_dns_button">Apply DNS</string>
+    <string name="custom_blocklist_section_title">Custom Blocklist (HTTPS Hosts URL)</string>
+    <string name="custom_blocklist_placeholder">https://example.com/hosts.txt</string>
+    <string name="custom_blocklist_error">URL must start with https://</string>
+    <string name="save_refresh_blocklist_button">Save &amp; Refresh</string>
+    <string name="per_app_bypass_section_title">Per-App VPN Bypass (%1$d selected)</string>
+    <string name="search_apps_placeholder">Search installed launcher apps…</string>
+    <string name="bypass_app_cd">Bypass VPN for %1$s</string>
+    <string name="reset_disclosure_button">Reset disclosure</string>
+    <string name="clear_all_data_button">Clear all data</string>
+    <string name="open_about_button">About AdBlocker</string>
+
+    <!-- About Screen -->
+    <string name="about_screen_title">About</string>
+    <string name="about_version_format">Version %1$s (hold for diagnostics in debug)</string>
+    <string name="about_privacy_explanation">All DNS filtering happens locally on your device using Android\'s VpnService. No browsing data or domain names are ever collected or sent anywhere. The only outbound network requests are hosts blocklist updates and forwarding allowed DNS queries to your selected upstream resolver.</string>
+    <string name="privacy_policy_button">View Privacy Policy</string>
+    <string name="privacy_policy_cd">Open Privacy Policy URL in browser</string>
+
+    <!-- Diagnostics Screen (Debug Only) -->
+    <string name="diagnostics_screen_title">Diagnostics (Debug)</string>
+    <string name="diag_vpn_running">VPN Service Running</string>
+    <string name="diag_yes">Yes</string>
+    <string name="diag_no">No</string>
+    <string name="diag_upstream_dns">Active Upstream DNS</string>
+    <string name="diag_blocklist_count">Blocklist Entry Count</string>
+    <string name="diag_whitelist_size">Whitelist Size</string>
+    <string name="diag_blocked_count">Blocked Count Since Start</string>
+    <string name="diag_last_latency">Last DNS Query Latency</string>
+    <string name="diag_latency_ms">%1$d ms</string>
+    <string name="diag_latency_na">N/A</string>
+    <string name="diag_dropped_doh">Dropped TCP 443 Packets to DoH IPs</string>
+    <string name="diag_test_dns_button">Test DNS</string>
+    <string name="diag_test_block_button">Test block</string>
+    <string name="diag_testing_status">Running test…</string>
+    <string name="diag_dns_test_success">Success (%1$d ms)</string>
+    <string name="diag_dns_test_failure">Failure (%1$s)</string>
+    <string name="diag_block_test_blocked">Result: Blocked by in-memory matcher</string>
+    <string name="diag_block_test_allowed">Result: Allowed by in-memory matcher</string>
+
+    <!-- Foreground Notification -->
+    <string name="vpn_notification_channel_name">AdBlocker VPN Status</string>
+    <string name="vpn_notification_title">Protection ON</string>
+    <string name="vpn_notification_text">Filtering DNS requests locally on device</string>
+    <string name="vpn_notification_turn_off">Turn off</string>
+</resources>

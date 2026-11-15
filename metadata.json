@@ -1,0 +1,6 @@
+{
+  "name": "AdBlocker",
+  "description": "Local DNS VPN ad blocker with StevenBlack hosts downloading, IPv4/IPv6 DNS interception, DoH blocking, whitelist, and live request log.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
